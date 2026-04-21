@@ -44,31 +44,115 @@ simulacrum/
     └── run-under-xvfb.sh
 ```
 
+## Prerequisites
+
+- **JDK 21** (tested with OpenJDK 21.0.10). The Gradle toolchain will
+  refuse to build on older JDKs.
+- **Internet access** on first build so Gradle can resolve JavaFX 21,
+  Artemis 2.37, Qpid JMS 2.6, WorldWind 2.0, JOGL 2.2.4, and Protobuf
+  3.25 from Maven Central.
+- *(Optional, for the smoke suite)* **Python 3.9+**, **`pip`**, and
+  **`xvfb-run`** (`apt install xvfb` on Debian/Ubuntu).
+
+No external RabbitMQ is required — the app launches its own embedded
+Artemis broker on `localhost:5672`.
+
 ## Build & run
 
+The repo ships a Gradle wrapper; you don't need a system Gradle install.
+All commands below assume you're in the repo root.
+
+### 1. Compile, generate protobuf, run unit tests
+
 ```bash
-./gradlew build                  # compile, generate protobuf, run unit tests
-./gradlew shadowJar              # produces build/libs/simulacrum-all.jar
+./gradlew build
+```
+
+Runs the 13 JUnit 5 tests in `src/test/java/` (NMEA parser, loopback
+transport, overlay/undo/redo, KML export, HTTP test-control server).
+
+### 2. Package a runnable fat jar
+
+```bash
+./gradlew shadowJar
+# → build/libs/simulacrum-all.jar   (~50 MB, all deps bundled)
+```
+
+### 3. Launch the desktop app
+
+```bash
 java -jar build/libs/simulacrum-all.jar
 ```
 
-Headless boot check (no display, exits after "UI ready" log):
+Opens a 1280×800 window with the controls pane on the left and the
+WorldWind 3D globe on the right. Click **Send once** to publish a
+`TrackUpdate`, **Start stream** to publish at N Hz, or **Draw sample
+polygon** to drop a shape and exercise undo/redo and KML export.
+
+> **Requires a real X11 session with hardware GL.** Xvfb's software
+> GL crashes the JavaFX ↔ Swing ↔ JOGL native stack — use `--no-globe`
+> (below) for headless environments.
+
+### 4. Headless boot check (CI / smoke test)
 
 ```bash
 java -jar build/libs/simulacrum-all.jar --headless-check
 ```
 
-Robot Framework smoke suite under Xvfb:
+Starts the embedded Artemis broker, opens a Qpid JMS connection over
+AMQP 1.0, logs `UI ready (headless transport=AMQP 1.0 @ …)`, shuts
+everything down, exits 0. Does not require a display.
+
+### 5. UI shell without the globe
 
 ```bash
-pip install -r robot/requirements.txt
+java -jar build/libs/simulacrum-all.jar --no-globe
+```
+
+Full JavaFX UI, AMQP publisher/subscriber, and test-control HTTP
+endpoint come up; the right-hand `SwingNode` is replaced with a
+placeholder. Use this in Xvfb or other headless displays.
+
+### 6. Robot Framework smoke suite (under Xvfb)
+
+```bash
+pip install -r robot/requirements.txt    # robotframework + robotframework-requests
 bash robot/run-under-xvfb.sh
 ```
 
-The smoke harness launches the jar with `--no-globe`. That flag skips the
-Swing/WorldWind `SwingNode` host because Xvfb's software GL crashes the
-JavaFX ↔ Swing ↔ JOGL native stack. Real desktop X servers with hardware
-GL don't need the flag — launch without it to see the full 3D globe.
+The runner boots the jar with `--no-globe` under `xvfb-run`, waits for
+`http://127.0.0.1:17355/health` to respond, and runs `robot/smoke.robot`
+(4 tests: health, publisher, subscriber, draw+KML). Robot output (HTML
+log and report) lands in a temp directory that the script prints at
+the end.
+
+### 7. Individual Gradle tasks
+
+```bash
+./gradlew test              # unit tests only
+./gradlew generateProto     # regenerate Java from simulacrum.proto
+./gradlew run               # compile + launch without shadowJar
+./gradlew clean             # wipe build/
+./gradlew tasks             # list everything
+```
+
+## Runtime knobs
+
+| Flag / env | Effect |
+|---|---|
+| `--headless-check` | Boot the broker + transport, log readiness, exit 0. No UI. |
+| `--no-globe` | Start the JavaFX UI without the WorldWind `SwingNode`. Safe under Xvfb. |
+| *(default)* | Full UI with 3D globe. |
+
+The HTTP test-control endpoint on `http://127.0.0.1:17355` accepts:
+
+- `GET /health` → `ok`
+- `GET /pub/start?hz=<double>` → start publishing `TrackUpdate`s at N Hz
+- `GET /pub/stop` → stop the publisher
+- `GET /pub/count` → messages published since launch
+- `GET /sub/count` → messages received by the in-app subscriber
+- `GET /draw/sample` → add a sample polygon to the overlay
+- `GET /kml` → export all overlay shapes as KML 2.2
 
 ## AMQP behavior
 
