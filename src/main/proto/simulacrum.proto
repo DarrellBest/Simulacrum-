@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package simulacrum;
+
+option java_package = "com.simulacrum.proto";
+option java_multiple_files = true;
+
+message TrackUpdate {
+  string track_id = 1;
+  double latitude_deg = 2;
+  double longitude_deg = 3;
+  double altitude_m = 4;
+  double speed_mps = 5;
+  double heading_deg = 6;
+  int64 timestamp_ms = 7;
+}
+
+message SensorReport {
+  string sensor_id = 1;
+  string kind = 2;
+  double value = 3;
+  string unit = 4;
+  int64 timestamp_ms = 5;
+}
+
+message Heartbeat {
+  string source = 1;
+  int64 timestamp_ms = 2;
+  int64 sequence = 3;
+}

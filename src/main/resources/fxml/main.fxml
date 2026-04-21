@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+
+<BorderPane fx:id="root" xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            stylesheets="@../styles/app.css"
+            styleClass="app-root">
+    <top>
+        <Label fx:id="banner" styleClass="banner" text="Simulacrum — SWFTS Simulator" maxWidth="Infinity">
+            <padding>
+                <Insets top="6" right="10" bottom="6" left="10"/>
+            </padding>
+        </Label>
+    </top>
+    <center>
+        <SplitPane fx:id="splitPane" dividerPositions="0.35" orientation="HORIZONTAL">
+            <items>
+                <StackPane fx:id="controlsHost" styleClass="controls-host"/>
+                <StackPane fx:id="globeHost" styleClass="globe-host"/>
+            </items>
+        </SplitPane>
+    </center>
+</BorderPane>
