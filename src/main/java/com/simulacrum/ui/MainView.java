@@ -4,9 +4,11 @@ import com.simulacrum.amqp.AmqpConfig;
 import com.simulacrum.amqp.MessageTransport;
 import com.simulacrum.overlay.OverlayManager;
 import com.simulacrum.overlay.UndoStack;
+import com.simulacrum.ship.ShipModel;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SplitPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
@@ -21,18 +23,24 @@ public final class MainView {
                     MessageTransport transport,
                     OverlayManager overlayManager,
                     UndoStack undoStack,
+                    ShipModel ship,
                     boolean disableGlobe) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
         this.root = loader.load();
         BorderPane rootPane = (BorderPane) root;
 
         this.globePane = new GlobePane(overlayManager);
-        this.controlsPane = new ControlsPane(config, transport, overlayManager, undoStack, globePane);
+        this.controlsPane = new ControlsPane(config, transport, overlayManager, undoStack, globePane, ship);
 
         SplitPane splitPane = (SplitPane) rootPane.getCenter();
         StackPane controlsHost = (StackPane) splitPane.getItems().get(0);
         StackPane globeHost = (StackPane) splitPane.getItems().get(1);
-        controlsHost.getChildren().setAll(controlsPane.node());
+        ScrollPane controlsScroll = new ScrollPane(controlsPane.node());
+        controlsScroll.setFitToWidth(true);
+        controlsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        controlsScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        controlsScroll.getStyleClass().add("controls-scroll");
+        controlsHost.getChildren().setAll(controlsScroll);
         if (disableGlobe) {
             Label placeholder = new Label("Globe disabled (--no-globe mode)");
             placeholder.getStyleClass().add("stat");

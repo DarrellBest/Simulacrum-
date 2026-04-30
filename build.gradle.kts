@@ -57,6 +57,10 @@ dependencies {
     implementation("org.jogamp.gluegen:gluegen-rt:$joglVersion")
     runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-linux-amd64")
     runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-linux-amd64")
+    runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-windows-amd64")
+    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-windows-amd64")
+    runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-macosx-universal")
+    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-macosx-universal")
 
     // Logging
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
@@ -84,12 +88,114 @@ application {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("integration", "gui")
+    }
     testLogging {
         events(TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED)
         showStandardStreams = true
     }
     systemProperty("java.awt.headless", "true")
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "Black-box tests that spawn the built shadow jar and drive it via HTTP."
+    group = "verification"
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    dependsOn("shadowJar")
+    shouldRunAfter("test")
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    testLogging {
+        events(TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED)
+        showStandardStreams = true
+    }
+}
+
+val artusLibDir = "C:/Users/dbest/PycharmProjects/artuscmd/extracted_10.24.0/ArtusCmd/lib"
+val debloatedJar = layout.buildDirectory.file("libs/simulacrum-all-debloated.jar")
+
+tasks.register<JavaExec>("debloat") {
+    description = "Runs ArtusCmd 10.24.0 to debloat the shadow jar (aggressiveness=keeppublic)."
+    group = "build"
+    dependsOn("shadowJar")
+    val inputJar = layout.buildDirectory.file("libs/simulacrum-all.jar").get().asFile
+    val outputJar = debloatedJar.get().asFile
+    inputs.file(inputJar)
+    outputs.file(outputJar)
+    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") }
+    mainClass.set("com.pjrcorp.artus.cmd.ArtusCmdMain")
+    args = listOf(
+            "process",
+            "-a", "keeppublic",
+            "-jv", "21",
+            "-fo",
+            "-o", outputJar.relativeTo(projectDir).path.replace('\\', '/'),
+            inputJar.relativeTo(projectDir).path.replace('\\', '/')
+    )
+}
+
+tasks.register<JavaExec>("debloatMax") {
+    description = "Runs ArtusCmd with aggressiveness=max (more cutting, more risk)."
+    group = "build"
+    dependsOn("shadowJar")
+    val inputJar = layout.buildDirectory.file("libs/simulacrum-all.jar").get().asFile
+    val outputJar = layout.buildDirectory.file("libs/simulacrum-all-debloated-max.jar").get().asFile
+    inputs.file(inputJar)
+    outputs.file(outputJar)
+    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") }
+    mainClass.set("com.pjrcorp.artus.cmd.ArtusCmdMain")
+    args = listOf(
+            "process",
+            "-a", "max",
+            "-jv", "21",
+            "-fo",
+            "-o", outputJar.relativeTo(projectDir).path.replace('\\', '/'),
+            inputJar.relativeTo(projectDir).path.replace('\\', '/')
+    )
+}
+
+tasks.register<Test>("guiTest") {
+    description = "Drives the live JavaFX UI of the built shadow jar with java.awt.Robot."
+    group = "verification"
+    dependsOn("shadowJar")
+    useJUnitPlatform { includeTags("gui") }
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    testLogging {
+        events(TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED)
+        showStandardStreams = true
+    }
+}
+
+tasks.register<Test>("guiTestDebloated") {
+    description = "Same Robot-driven GUI tests, but against the debloated jar."
+    group = "verification"
+    dependsOn("debloat")
+    useJUnitPlatform { includeTags("gui") }
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    systemProperty("simulacrum.jar", debloatedJar.get().asFile.absolutePath)
+    testLogging {
+        events(TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED)
+        showStandardStreams = true
+    }
+}
+
+tasks.register<Test>("integrationTestDebloated") {
+    description = "Runs the integration suite against the debloated jar."
+    group = "verification"
+    dependsOn("debloat")
+    useJUnitPlatform { includeTags("integration") }
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    systemProperty("simulacrum.jar", debloatedJar.get().asFile.absolutePath)
+    testLogging {
+        events(TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED)
+        showStandardStreams = true
+    }
 }
 
 tasks.named<Jar>("jar") {
@@ -103,4 +209,6 @@ tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.Shadow
     archiveClassifier.set("all")
     archiveVersion.set("")
     mergeServiceFiles()
+    exclude("javafx-swt.jar")
+    exclude("**/javafx-swt.jar")
 }

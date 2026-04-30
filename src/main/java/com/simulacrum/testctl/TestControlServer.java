@@ -25,6 +25,17 @@ public final class TestControlServer implements AutoCloseable {
         long subscriberCount();
         void drawSamplePolygon();
         String exportKml();
+        default void setThrottle(double pct) { }
+        default void setRudder(double deg) { }
+        default void setOrderedHeading(double deg) { }
+        default void setAutopilot(boolean on) { }
+        default void setAnchored(boolean on) { }
+        default void emitHeartbeat() { }
+        default void emitSensor(String kind) { }
+        default String shipState() { return ""; }
+        default String uiLocate(String id) { return ""; }
+        default String uiList() { return ""; }
+        default void uiFocus() { }
     }
 
     private final HttpServer server;
@@ -56,6 +67,45 @@ public final class TestControlServer implements AutoCloseable {
         });
         server.createContext("/kml", exchange ->
                 respond(exchange, 200, handlers.exportKml()));
+        server.createContext("/ship/throttle", exchange -> {
+            handlers.setThrottle(parseDouble(exchange.getRequestURI().getQuery(), "v", 0));
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/ship/rudder", exchange -> {
+            handlers.setRudder(parseDouble(exchange.getRequestURI().getQuery(), "v", 0));
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/ship/heading", exchange -> {
+            handlers.setOrderedHeading(parseDouble(exchange.getRequestURI().getQuery(), "v", 0));
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/ship/autopilot", exchange -> {
+            handlers.setAutopilot(parseBool(exchange.getRequestURI().getQuery()));
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/ship/anchor", exchange -> {
+            handlers.setAnchored(parseBool(exchange.getRequestURI().getQuery()));
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/ship/state", exchange ->
+                respond(exchange, 200, handlers.shipState()));
+        server.createContext("/signal/heartbeat", exchange -> {
+            handlers.emitHeartbeat();
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/ui/locate", exchange ->
+                respond(exchange, 200,
+                        handlers.uiLocate(parseString(exchange.getRequestURI().getQuery(), "id", ""))));
+        server.createContext("/ui/list", exchange -> respond(exchange, 200, handlers.uiList()));
+        server.createContext("/ui/focus", exchange -> {
+            handlers.uiFocus();
+            respond(exchange, 200, "ok");
+        });
+        server.createContext("/signal/sensor", exchange -> {
+            String kind = parseString(exchange.getRequestURI().getQuery(), "kind", "SONAR");
+            handlers.emitSensor(kind);
+            respond(exchange, 200, "ok");
+        });
         server.setExecutor(null);
         server.start();
     }
@@ -74,6 +124,20 @@ public final class TestControlServer implements AutoCloseable {
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
+    }
+
+    private static String parseString(String query, String key, String fallback) {
+        if (query == null) return fallback;
+        for (String pair : query.split("&")) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2 && kv[0].equals(key)) return kv[1];
+        }
+        return fallback;
+    }
+
+    private static boolean parseBool(String query) {
+        String v = parseString(query, "v", "true");
+        return v.equalsIgnoreCase("true") || v.equals("1") || v.equalsIgnoreCase("on");
     }
 
     private static double parseDouble(String query, String key, double fallback) {
