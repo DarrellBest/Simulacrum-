@@ -8,3 +8,6 @@ out/
 bin/
 .DS_Store
 /node_modules/
+
+# Gradle distro downloaded on first wrapper run (too large for git)
+gradle/wrapper/*.zip
