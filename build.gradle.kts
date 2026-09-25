@@ -127,7 +127,12 @@ tasks.register<Test>("integrationTest") {
     }
 }
 
-val artusLibDir = "C:/Users/dbest/PycharmProjects/artuscmd/extracted_13.2.0/ArtusCmd/lib"
+// ArtusCmd is a licensed tool and is NOT checked in. Point at its lib/ directory with
+//   -PartusLib=/path/to/ArtusCmd/lib   or   ARTUS_LIB=/path/to/ArtusCmd/lib
+// Only the debloat* tasks need it; every other task works without ArtusCmd.
+val artusLibDir: String = (project.findProperty("artusLib") as String?)
+        ?: System.getenv("ARTUS_LIB")
+        ?: "$projectDir/artuscmd/ArtusCmd/lib"
 val debloatedJar = layout.buildDirectory.file("libs/simulacrum-all-debloated.jar")
 
 tasks.register<JavaExec>("debloat") {

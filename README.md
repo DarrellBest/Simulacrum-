@@ -10,6 +10,14 @@ MVP, not a production system.
 You need only one prerequisite: **JDK 21** on your PATH (Microsoft OpenJDK 21
 or Eclipse Temurin 21 are both fine).
 
+> **Have a newer JDK as your default?** The bundled Gradle 8.14 wrapper does
+> not run on JDK 25. Point `JAVA_HOME` at a JDK 21 before invoking any
+> `gradlew` command, for example on Windows:
+>
+> ```powershell
+> $env:JAVA_HOME = 'C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot'
+> ```
+
 **Windows (PowerShell):**
 
 ```powershell
@@ -91,8 +99,9 @@ simulacrum/
 
 ## Prerequisites
 
-- **JDK 21** (tested with OpenJDK 21.0.10). The Gradle toolchain will
-  refuse to build on older JDKs.
+- **JDK 21** (tested with Microsoft OpenJDK 21.0.12). The Gradle toolchain
+  refuses older JDKs, and the Gradle 8.14 wrapper itself will not start on
+  JDK 25, so `JAVA_HOME` must point at a 21.
 - **Internet access on first build only**, so the Gradle wrapper can
   fetch its distribution zip from `services.gradle.org` (~137 MB,
   cached into `GRADLE_USER_HOME` after the first run). Every subsequent
@@ -101,10 +110,13 @@ simulacrum/
   **`xvfb-run`** (`apt install xvfb` on Debian/Ubuntu).
 
 **All Gradle plugins and every runtime/test dependency are vendored**
-under `offline-repo/` (a flattened Maven layout, ~78 MB across 108
-artifacts). After the wrapper has its distribution cached, every
-build accepts `--offline` and resolves zero artifacts from the
-internet; `settings.gradle.kts` pins resolution to the in-tree repo.
+under `offline-repo/` (a flattened Maven layout, ~100 MB), including
+the platform-specific JavaFX, JOGL and `protoc` artifacts for Linux,
+Windows and macOS (x64 and Apple Silicon). After the wrapper has its
+distribution cached, every build accepts `--offline` and resolves zero
+artifacts from the internet. `settings.gradle.kts` searches
+`offline-repo/` first and falls back to Maven Central only for anything
+not vendored.
 
 No external RabbitMQ is required: the app launches its own embedded
 Artemis broker on `localhost:5672`.
@@ -123,8 +135,10 @@ All commands below assume you're in the repo root.
 > Everything below accepts `--offline`. Drop the flag only if you
 > explicitly want to hit the internet — but the build does not need it.
 
-Runs the 13 JUnit 5 tests in `src/test/java/` (NMEA parser, loopback
-transport, overlay/undo/redo, KML export, HTTP test-control server).
+Runs the 27 JUnit 5 unit tests in `src/test/java/` (NMEA parser, loopback
+transport, overlay/undo/redo, KML export, ship model and physics, HTTP
+test-control server, controls pane). Tests tagged `integration` and `gui`
+are excluded here; see section 7.
 
 ### 2. Package a runnable fat jar
 
@@ -170,12 +184,22 @@ placeholder. Use this in Xvfb or other headless displays.
 
 ### 6. Robot Framework smoke suite
 
-The suite exercises every route exposed by the test-control server
-(health, publisher, subscriber, draw/KML, ship controls, signal
-buttons, and UI introspection — 16 tests total).
+**How it fits together.** There is no Robot Framework jar. Robot is a
+Python package (`robotframework` + `robotframework-requests`, pinned in
+`robot/requirements.txt`). The only jar involved is the app's own shadow
+jar. When the app starts it opens a small HTTP **test-control server** on
+`127.0.0.1:17355` (`src/main/java/com/simulacrum/testctl/TestControlServer.java`).
+`robot/smoke.robot` drives every one of those routes with plain HTTP GETs
+and asserts on the responses: 17 tests covering health, publisher,
+subscriber, draw/KML, ship throttle/rudder/heading/autopilot/anchor,
+heartbeat and sensor signals, and UI node introspection. While the suite
+runs, the UI shows a `ROBOT: <route>` banner and flashes the button each
+request maps to, so a recording of the run is self-explanatory.
 
-**One-time setup** — create a project-local venv so the toolchain
-stays out of your system Python:
+Every runner below does the same four things: start the jar, poll
+`/health` until it answers, run `smoke.robot`, then kill the app.
+
+**One-time setup** (project-local venv so nothing touches system Python):
 
 ```powershell
 .\robot\setup-venv.ps1            # Windows
@@ -185,40 +209,96 @@ stays out of your system Python:
 bash robot/setup-venv.sh          # Linux/macOS
 ```
 
-Both scripts are idempotent — re-run after a `requirements.txt` bump.
+Both scripts are idempotent. Re-run after a `requirements.txt` bump. If you
+would rather use your own interpreter, `pip install -r robot/requirements.txt`
+is all that is needed.
 
-**Linux (under Xvfb):**
+**Windows, PowerShell:**
+
+```powershell
+.\robot\run-on-windows.ps1                       # --no-globe, 8 s hold at the end so you can see the UI
+.\robot\run-on-windows.ps1 -HoldSeconds 0        # CI mode
+.\robot\run-on-windows.ps1 -WithGlobe -PaceSeconds 1.5   # full 3D globe, slowed down for demos
+```
+
+**Windows, Git Bash** (takes an explicit jar and output directory, so it
+works for the debloated jar too):
+
+```bash
+bash robot/run-windows.sh build/libs/simulacrum-all.jar build/robot-out
+bash robot/run-windows.sh build/libs/simulacrum-all.jar build/robot-out ""   # "" = full UI with globe
+```
+
+**Linux, under Xvfb:**
 
 ```bash
 bash robot/run-under-xvfb.sh
 ```
 
-**Windows (PowerShell, native, no Xvfb needed):**
+**Running Robot by hand** against an app you already started:
 
-```powershell
-.\robot\run-on-windows.ps1                  # default 8s hold so you can see the UI
-.\robot\run-on-windows.ps1 -HoldSeconds 0   # CI mode, no hold
+```bash
+python -m robot.run --outputdir build/robot-out robot/smoke.robot
+python -m robot.run --variable PACE:1.5s robot/smoke.robot   # pause between tests
 ```
 
-Either runner boots the jar with `--no-globe`, waits for
-`http://127.0.0.1:17355/health` to respond, then runs `robot/smoke.robot`.
-Robot output (HTML log and report) lands in a temp directory that the
-script prints at the end.
+Robot writes `log.html`, `report.html` and `output.xml` into the output
+directory. Open `log.html` for the per-keyword trace of a failing test.
 
 **Adding a new test:** see [robot/ADD-TEST-PROMPT.md](robot/ADD-TEST-PROMPT.md)
 for a copy-paste prompt template that briefs Claude (or any other coding
 assistant) with everything it needs to add a new smoke test correctly in
 one shot.
 
-### 7. Individual Gradle tasks
+### 7. Gradle tasks
 
 ```bash
-./gradlew test              # unit tests only
-./gradlew generateProto     # regenerate Java from simulacrum.proto
-./gradlew run               # compile + launch without shadowJar
-./gradlew clean             # wipe build/
-./gradlew tasks             # list everything
+./gradlew test                # unit tests only (excludes integration + gui)
+./gradlew integrationTest     # builds the shadow jar, spawns it, drives it over HTTP (JUnit)
+./gradlew guiTest             # builds the shadow jar, drives the live JavaFX UI with java.awt.Robot
+./gradlew generateProto       # regenerate Java from simulacrum.proto
+./gradlew run                 # compile + launch without shadowJar
+./gradlew packageSource       # build/distributions/simulacrum-src-<version>.zip
+./gradlew clean               # wipe build/
+./gradlew tasks               # list everything
 ```
+
+`guiTest` needs a real desktop session: it moves the mouse and clicks.
+Note the name clash: that task uses `java.awt.Robot`, which has nothing
+to do with Robot Framework.
+
+### 8. Debloating the jar with ArtusCmd (optional)
+
+ArtusCmd is a licensed tool and is **not** in this repository. Every
+`artuscmd/`, `ArtusCmd*/` and `.artus/` path is git-ignored so an
+unpacked copy inside the checkout can never be committed. Tell the build
+where it lives with either a Gradle property or an environment variable:
+
+```bash
+./gradlew debloat -PartusLib=/path/to/ArtusCmd/lib
+ARTUS_LIB=/path/to/ArtusCmd/lib ./gradlew debloat
+```
+
+| Task | What it does |
+|---|---|
+| `debloat` | `shadowJar`, then ArtusCmd with `-a keeppublic`, output `build/libs/simulacrum-all-debloated.jar` |
+| `debloatMax` | Same with `-a max` (more cutting, more risk), output `simulacrum-all-debloated-max.jar` |
+| `integrationTestDebloated` | The integration suite against the debloated jar |
+| `guiTestDebloated` | The `java.awt.Robot` UI suite against the debloated jar |
+
+`debloat-test.sh` is the end-to-end version: it builds, runs the Robot
+suite against the plain jar, debloats with a conservative flag set, runs
+the suite again against the debloated jar and prints a size and pass/fail
+summary for both:
+
+```bash
+bash debloat-test.sh --artus-lib /path/to/ArtusCmd/lib
+bash debloat-test.sh --artus-tgz /path/to/ArtusCmd-13.2.0.tar.gz --globe
+```
+
+`package-debloat-kit.sh` tars up the scripts, suite and report for
+hand-off. See [DEBLOAT_REPORT.md](DEBLOAT_REPORT.md) for results and the
+known caveat that `keeppublic` strips a JavaFX JNI callback the app needs.
 
 ## Runtime knobs
 
@@ -237,6 +317,16 @@ The HTTP test-control endpoint on `http://127.0.0.1:17355` accepts:
 - `GET /sub/count` → messages received by the in-app subscriber
 - `GET /draw/sample` → add a sample polygon to the overlay
 - `GET /kml` → export all overlay shapes as KML 2.2
+- `GET /ship/throttle?v=<-100..100>`, `/ship/rudder?v=<deg>`, `/ship/heading?v=<deg>` → `ok`
+- `GET /ship/autopilot?v=<bool>`, `/ship/anchor?v=<bool>` → `ok`
+- `GET /ship/state` → `lat=.. lon=.. hdg=.. spd=.. thr=.. rud=..`
+- `GET /signal/heartbeat`, `/signal/sensor?kind=SONAR|RADAR|AIS|EW|MOB|DISTRESS` → publish one message
+- `GET /ui/list` → comma-separated registered node ids (`btn.heartbeat`, `btn.allAheadFull`, ...)
+- `GET /ui/locate?id=<node id>` → `x,y,w,h` on screen, or empty if unknown
+- `GET /ui/focus` → bring the window to the front
+
+Every request also fires a `ROBOT: <route>` banner in the controls pane
+and flashes the matching button, if the route maps to one.
 
 ## AMQP behavior
 
@@ -246,6 +336,12 @@ The HTTP test-control endpoint on `http://127.0.0.1:17355` accepts:
 - If the AMQP connection fails for any reason, the app transparently falls
   back to an in-process `LoopbackTransport` and displays a banner so the demo
   keeps working with zero external state.
+
+## Branches
+
+- `master` is the integration branch and always builds and passes the
+  unit and Robot suites.
+- `develop` is where day-to-day work lands before it is merged to `master`.
 
 ## Scope note
 

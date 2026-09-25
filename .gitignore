@@ -13,7 +13,13 @@ bin/
 
 # debloat kit outputs
 dist/
+
+# ArtusCmd (licensed, never committed) — see artusLibDir in build.gradle.kts
 .artus/
+artuscmd/
+ArtusCmd*/
+ArtusCmd*.tar.gz
+ArtusCmd*.zip
 robot/.venv/
 
 # Gradle distro downloaded on first wrapper run (too large for git)
