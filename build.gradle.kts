@@ -114,11 +114,11 @@ tasks.register<Test>("integrationTest") {
     }
 }
 
-val artusLibDir = "C:/Users/dbest/PycharmProjects/artuscmd/extracted_10.24.0/ArtusCmd/lib"
+val artusLibDir = "C:/Users/dbest/PycharmProjects/artuscmd/extracted_13.2.0/ArtusCmd/lib"
 val debloatedJar = layout.buildDirectory.file("libs/simulacrum-all-debloated.jar")
 
 tasks.register<JavaExec>("debloat") {
-    description = "Runs ArtusCmd 10.24.0 to debloat the shadow jar (aggressiveness=keeppublic)."
+    description = "Runs ArtusCmd 13.2.0 to debloat the shadow jar (aggressiveness=keeppublic)."
     group = "build"
     dependsOn("shadowJar")
     val inputJar = layout.buildDirectory.file("libs/simulacrum-all.jar").get().asFile

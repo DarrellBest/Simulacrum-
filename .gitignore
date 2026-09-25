@@ -10,3 +10,7 @@ bin/
 /node_modules/
 
 .claude/
+
+# debloat kit outputs
+dist/
+.artus/
