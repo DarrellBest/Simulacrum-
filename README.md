@@ -78,26 +78,35 @@ simulacrum/
 │   ├── fxml/main.fxml
 │   └── styles/app.css
 ├── src/test/java/                   # JUnit 5 unit tests
-└── robot/
-    ├── ADD-TEST-PROMPT.md           # Template for adding new Robot tests
-    ├── smoke.robot                  # 17 tests covering every endpoint
-    ├── requirements.txt
-    ├── setup-venv.{ps1,sh}          # Idempotent venv setup
-    ├── run-on-windows.ps1           # Windows runner
-    └── run-under-xvfb.sh            # Linux runner (under Xvfb)
+├── robot/
+│   ├── ADD-TEST-PROMPT.md           # Template for adding new Robot tests
+│   ├── smoke.robot                  # 17 tests covering every endpoint
+│   ├── requirements.txt
+│   ├── setup-venv.{ps1,sh}          # Idempotent venv setup
+│   ├── run-on-windows.ps1           # Windows runner
+│   ├── run-windows.sh               # Windows runner (Git Bash)
+│   └── run-under-xvfb.sh            # Linux runner (under Xvfb)
+└── offline-repo/                    # Vendored Maven repo for offline builds
 ```
 
 ## Prerequisites
 
 - **JDK 21** (tested with OpenJDK 21.0.10). The Gradle toolchain will
   refuse to build on older JDKs.
-- **Internet access** on first build so Gradle can resolve JavaFX 21,
-  Artemis 2.37, Qpid JMS 2.6, WorldWind 2.0, JOGL 2.2.4, and Protobuf
-  3.25 from Maven Central.
+- **Internet access on first build only**, so the Gradle wrapper can
+  fetch its distribution zip from `services.gradle.org` (~137 MB,
+  cached into `GRADLE_USER_HOME` after the first run). Every subsequent
+  build runs fully offline.
 - *(Optional, for the smoke suite)* **Python 3.9+**, **`pip`**, and
   **`xvfb-run`** (`apt install xvfb` on Debian/Ubuntu).
 
-No external RabbitMQ is required — the app launches its own embedded
+**All Gradle plugins and every runtime/test dependency are vendored**
+under `offline-repo/` (a flattened Maven layout, ~78 MB across 108
+artifacts). After the wrapper has its distribution cached, every
+build accepts `--offline` and resolves zero artifacts from the
+internet; `settings.gradle.kts` pins resolution to the in-tree repo.
+
+No external RabbitMQ is required: the app launches its own embedded
 Artemis broker on `localhost:5672`.
 
 ## Build & run
@@ -108,8 +117,11 @@ All commands below assume you're in the repo root.
 ### 1. Compile, generate protobuf, run unit tests
 
 ```bash
-./gradlew build
+./gradlew --offline build
 ```
+
+> Everything below accepts `--offline`. Drop the flag only if you
+> explicitly want to hit the internet — but the build does not need it.
 
 Runs the 13 JUnit 5 tests in `src/test/java/` (NMEA parser, loopback
 transport, overlay/undo/redo, KML export, HTTP test-control server).

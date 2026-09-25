@@ -17,9 +17,8 @@ java {
     }
 }
 
-repositories {
-    mavenCentral()
-}
+// Repositories are declared centrally in settings.gradle.kts so the whole build
+// resolves from the in-tree offline-repo/ directory with no network access.
 
 javafx {
     version = "21.0.5"
