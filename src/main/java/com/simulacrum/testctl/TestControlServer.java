@@ -36,6 +36,8 @@ public final class TestControlServer implements AutoCloseable {
         default String uiLocate(String id) { return ""; }
         default String uiList() { return ""; }
         default void uiFocus() { }
+        /** Fired before each route runs. Lets the UI surface "Robot just hit X" feedback. */
+        default void onRequest(String path, String query) { }
     }
 
     private final HttpServer server;
@@ -47,61 +49,61 @@ public final class TestControlServer implements AutoCloseable {
 
     public TestControlServer(int port, Handlers handlers) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
-        server.createContext("/health", plain("ok"));
-        server.createContext("/pub/start", exchange -> {
+        route("/health", handlers, exchange -> respond(exchange, 200, "ok"));
+        route("/pub/start", handlers, exchange -> {
             double hz = parseDouble(exchange.getRequestURI().getQuery(), "hz", 1.0);
             handlers.startPublisher(hz);
             respond(exchange, 200, "started@" + hz + "Hz");
         });
-        server.createContext("/pub/stop", exchange -> {
+        route("/pub/stop", handlers, exchange -> {
             handlers.stopPublisher();
             respond(exchange, 200, "stopped");
         });
-        server.createContext("/pub/count", exchange ->
+        route("/pub/count", handlers, exchange ->
                 respond(exchange, 200, Long.toString(handlers.publisherCount())));
-        server.createContext("/sub/count", exchange ->
+        route("/sub/count", handlers, exchange ->
                 respond(exchange, 200, Long.toString(handlers.subscriberCount())));
-        server.createContext("/draw/sample", exchange -> {
+        route("/draw/sample", handlers, exchange -> {
             handlers.drawSamplePolygon();
             respond(exchange, 200, "drawn");
         });
-        server.createContext("/kml", exchange ->
+        route("/kml", handlers, exchange ->
                 respond(exchange, 200, handlers.exportKml()));
-        server.createContext("/ship/throttle", exchange -> {
+        route("/ship/throttle", handlers, exchange -> {
             handlers.setThrottle(parseDouble(exchange.getRequestURI().getQuery(), "v", 0));
             respond(exchange, 200, "ok");
         });
-        server.createContext("/ship/rudder", exchange -> {
+        route("/ship/rudder", handlers, exchange -> {
             handlers.setRudder(parseDouble(exchange.getRequestURI().getQuery(), "v", 0));
             respond(exchange, 200, "ok");
         });
-        server.createContext("/ship/heading", exchange -> {
+        route("/ship/heading", handlers, exchange -> {
             handlers.setOrderedHeading(parseDouble(exchange.getRequestURI().getQuery(), "v", 0));
             respond(exchange, 200, "ok");
         });
-        server.createContext("/ship/autopilot", exchange -> {
+        route("/ship/autopilot", handlers, exchange -> {
             handlers.setAutopilot(parseBool(exchange.getRequestURI().getQuery()));
             respond(exchange, 200, "ok");
         });
-        server.createContext("/ship/anchor", exchange -> {
+        route("/ship/anchor", handlers, exchange -> {
             handlers.setAnchored(parseBool(exchange.getRequestURI().getQuery()));
             respond(exchange, 200, "ok");
         });
-        server.createContext("/ship/state", exchange ->
+        route("/ship/state", handlers, exchange ->
                 respond(exchange, 200, handlers.shipState()));
-        server.createContext("/signal/heartbeat", exchange -> {
+        route("/signal/heartbeat", handlers, exchange -> {
             handlers.emitHeartbeat();
             respond(exchange, 200, "ok");
         });
-        server.createContext("/ui/locate", exchange ->
+        route("/ui/locate", handlers, exchange ->
                 respond(exchange, 200,
                         handlers.uiLocate(parseString(exchange.getRequestURI().getQuery(), "id", ""))));
-        server.createContext("/ui/list", exchange -> respond(exchange, 200, handlers.uiList()));
-        server.createContext("/ui/focus", exchange -> {
+        route("/ui/list", handlers, exchange -> respond(exchange, 200, handlers.uiList()));
+        route("/ui/focus", handlers, exchange -> {
             handlers.uiFocus();
             respond(exchange, 200, "ok");
         });
-        server.createContext("/signal/sensor", exchange -> {
+        route("/signal/sensor", handlers, exchange -> {
             String kind = parseString(exchange.getRequestURI().getQuery(), "kind", "SONAR");
             handlers.emitSensor(kind);
             respond(exchange, 200, "ok");
@@ -110,11 +112,18 @@ public final class TestControlServer implements AutoCloseable {
         server.start();
     }
 
-    public long hits() { return hits.get(); }
-
-    private HttpHandler plain(String body) {
-        return exchange -> respond(exchange, 200, body);
+    private void route(String path, Handlers handlers, HttpHandler inner) {
+        server.createContext(path, exchange -> {
+            try {
+                handlers.onRequest(path, exchange.getRequestURI().getQuery());
+            } catch (RuntimeException ignored) {
+                // UI feedback must never break a route
+            }
+            inner.handle(exchange);
+        });
     }
+
+    public long hits() { return hits.get(); }
 
     private void respond(HttpExchange exchange, int status, String body) throws IOException {
         hits.incrementAndGet();

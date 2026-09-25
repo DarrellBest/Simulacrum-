@@ -40,7 +40,21 @@ val slf4jVersion = "2.0.16"
 // JOGL 2.3.x moved that package, which breaks WorldWindowGLJPanel at link time.
 val joglVersion = "2.2.4"
 
+// Extra classpath for the debloat task only. ArtusCmd's distribution lib/
+// is missing log4j-core/api, which its startup calls directly. We resolve
+// these from Maven Central without polluting the shadow jar.
+configurations {
+    create("artusRuntime") {
+        isCanBeResolved = true
+        isCanBeConsumed = false
+    }
+}
+
 dependencies {
+    "artusRuntime"("org.apache.logging.log4j:log4j-core:2.24.1")
+    "artusRuntime"("org.apache.logging.log4j:log4j-api:2.24.1")
+    "artusRuntime"("org.apache.logging.log4j:log4j-iostreams:2.24.1")
+
     // Protobuf (payload schemas)
     implementation("com.google.protobuf:protobuf-java:$protobufVersion")
     implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
@@ -125,15 +139,19 @@ tasks.register<JavaExec>("debloat") {
     val outputJar = debloatedJar.get().asFile
     inputs.file(inputJar)
     outputs.file(outputJar)
-    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") }
+    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") } + configurations["artusRuntime"]
     mainClass.set("com.pjrcorp.artus.cmd.ArtusCmdMain")
+    // Work from build/libs so we can hand ArtusCmd bare filenames — it URI-ifies
+    // anything that looks absolute, and the Windows drive-letter colon blows up
+    // Java's URI parser ("Illegal character [:] in path at index 4: ///C:/...").
+    workingDir = inputJar.parentFile
     args = listOf(
             "process",
             "-a", "keeppublic",
             "-jv", "21",
             "-fo",
-            "-o", outputJar.relativeTo(projectDir).path.replace('\\', '/'),
-            inputJar.relativeTo(projectDir).path.replace('\\', '/')
+            "-o", outputJar.name,
+            inputJar.name
     )
 }
 
@@ -145,7 +163,7 @@ tasks.register<JavaExec>("debloatMax") {
     val outputJar = layout.buildDirectory.file("libs/simulacrum-all-debloated-max.jar").get().asFile
     inputs.file(inputJar)
     outputs.file(outputJar)
-    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") }
+    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") } + configurations["artusRuntime"]
     mainClass.set("com.pjrcorp.artus.cmd.ArtusCmdMain")
     args = listOf(
             "process",
@@ -211,4 +229,53 @@ tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.Shadow
     mergeServiceFiles()
     exclude("javafx-swt.jar")
     exclude("**/javafx-swt.jar")
+}
+
+// Reproducible source distribution. Produces build/distributions/simulacrum-src-<version>.zip
+// containing everything a fresh user needs to unpack and run bootstrap.{ps1,sh}.
+// Excludes build artifacts, IDE state, venvs, git metadata, and any recorded demos.
+tasks.register<Zip>("packageSource") {
+    description = "Zip the source tree into a self-contained distribution archive."
+    group = "distribution"
+
+    archiveBaseName.set("simulacrum-src")
+    archiveVersion.set(project.version.toString())
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+
+    val rootName = "simulacrum-${project.version}"
+    into(rootName) {
+        from(projectDir) {
+            exclude(
+                ".git",
+                ".git/**",
+                ".gradle/**",
+                ".idea/**",
+                ".vscode/**",
+                ".claude/**",
+                "build/**",
+                "out/**",
+                "bin/**",
+                "robot/.venv/**",
+                "**/*.iml",
+                "**/*.log",
+                "**/*.mp4",
+                "**/.DS_Store"
+            )
+        }
+    }
+
+    // Preserve the executable bit on shell scripts and the Gradle wrapper.
+    filesMatching(listOf(
+        "$rootName/gradlew",
+        "$rootName/bootstrap.sh",
+        "$rootName/robot/setup-venv.sh",
+        "$rootName/robot/run-under-xvfb.sh"
+    )) {
+        mode = "755".toInt(8)
+    }
+
+    doLast {
+        val out = archiveFile.get().asFile
+        println("Source distribution: ${out.absolutePath}  (${out.length() / 1024} KB)")
+    }
 }

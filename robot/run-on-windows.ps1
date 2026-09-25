@@ -11,7 +11,13 @@ param(
     [int]$BootTimeoutSeconds = 60,
     # Seconds to leave the JavaFX window on screen after the suite finishes,
     # so you can actually see it. Set to 0 in CI.
-    [int]$HoldSeconds = 8
+    [int]$HoldSeconds = 8,
+    # Boot with the WorldWind 3D globe enabled. Off by default so CI on
+    # software-GL machines stays stable; turn on for demos and recordings.
+    [switch]$WithGlobe,
+    # Seconds of pause inserted between every test (via Robot's Test Teardown)
+    # so a human eye can follow each step. 0 keeps the suite at full speed.
+    [double]$PaceSeconds = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -33,9 +39,12 @@ $LogDir = Join-Path ([IO.Path]::GetTempPath()) ("simulacrum-robot-" + [Guid]::Ne
 New-Item -ItemType Directory -Path $LogDir | Out-Null
 $AppLog = Join-Path $LogDir 'app.log'
 
-Write-Host "Launching Simulacrum (--no-globe), log: $AppLog"
+$JavaArgs = @('-jar', $Jar)
+if (-not $WithGlobe) { $JavaArgs += '--no-globe' }
+$Mode = if ($WithGlobe) { 'full UI + globe' } else { '--no-globe' }
+Write-Host "Launching Simulacrum ($Mode), log: $AppLog"
 $app = Start-Process -FilePath 'java' `
-    -ArgumentList @('-jar', $Jar, '--no-globe') `
+    -ArgumentList $JavaArgs `
     -RedirectStandardOutput $AppLog `
     -RedirectStandardError  (Join-Path $LogDir 'app.err.log') `
     -PassThru
@@ -60,7 +69,10 @@ try {
     # Pull the JavaFX window to the foreground so the suite is visible.
     try { Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/ui/focus" -TimeoutSec 2 | Out-Null } catch { }
 
-    & $Robot --outputdir $LogDir (Join-Path $Here 'smoke.robot')
+    $RobotArgs = @('--outputdir', $LogDir)
+    if ($PaceSeconds -gt 0) { $RobotArgs += @('--variable', "PACE:${PaceSeconds}s") }
+    $RobotArgs += (Join-Path $Here 'smoke.robot')
+    & $Robot @RobotArgs
     $rc = $LASTEXITCODE
     Write-Host "Robot output in $LogDir"
     if ($HoldSeconds -gt 0) {

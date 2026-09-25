@@ -5,6 +5,44 @@ infrastructure: JavaFX UI on the left, a NASA WorldWind globe on the right,
 and an AMQP publisher/subscriber in the middle. Intended as a developer-grade
 MVP, not a production system.
 
+## Quick start
+
+You need only one prerequisite: **JDK 21** on your PATH (Microsoft OpenJDK 21
+or Eclipse Temurin 21 are both fine).
+
+**Windows (PowerShell):**
+
+```powershell
+.\bootstrap.ps1
+```
+
+**Linux / macOS / WSL:**
+
+```bash
+bash bootstrap.sh
+```
+
+The bootstrap script downloads dependencies, builds a ~50 MB self-contained
+jar with the Gradle wrapper, sets up a project-local Python venv for the
+Robot Framework test suite, runs all 17 smoke tests, then launches the
+JavaFX desktop app. First run takes 3–5 minutes depending on network speed;
+subsequent runs are incremental.
+
+Flags: `-NoTests` / `--no-tests` skips the Robot suite, `-NoLaunch` /
+`--no-launch` builds only. Examples and more detail in the rest of this
+README.
+
+**Want to ship the source to someone else?**
+
+```powershell
+.\gradlew.bat packageSource          # Windows
+./gradlew packageSource              # Linux/macOS
+```
+
+Drops a self-contained `simulacrum-src-<version>.zip` into
+`build/distributions/`. Unzip on any machine with a JDK 21 and run the
+bootstrap script in the root — no other setup required.
+
 ## What's in here
 
 - **JavaFX 21** split-screen shell (`src/main/java/com/simulacrum/ui/`)
@@ -23,6 +61,7 @@ MVP, not a production system.
 
 ```
 simulacrum/
+├── bootstrap.ps1 / bootstrap.sh     # One-shot build + test + launch
 ├── build.gradle.kts                 # Gradle + JavaFX + Protobuf + ShadowJar
 ├── settings.gradle.kts
 ├── src/main/java/com/simulacrum/
@@ -31,6 +70,7 @@ simulacrum/
 │   ├── amqp/                        # Artemis embedded broker, Qpid JMS, loopback
 │   ├── data/                        # DataSource + NmeaDataSource
 │   ├── overlay/                     # Shapes, undo/redo, KML
+│   ├── ship/                        # Ship model + 20 Hz physics integrator
 │   ├── services/                    # Stubs for LDAP/DNS/NTP/TACLAN (config only)
 │   └── testctl/                     # HTTP test-control endpoint
 ├── src/main/proto/simulacrum.proto  # TrackUpdate, SensorReport, Heartbeat
@@ -39,9 +79,12 @@ simulacrum/
 │   └── styles/app.css
 ├── src/test/java/                   # JUnit 5 unit tests
 └── robot/
-    ├── smoke.robot
+    ├── ADD-TEST-PROMPT.md           # Template for adding new Robot tests
+    ├── smoke.robot                  # 17 tests covering every endpoint
     ├── requirements.txt
-    └── run-under-xvfb.sh
+    ├── setup-venv.{ps1,sh}          # Idempotent venv setup
+    ├── run-on-windows.ps1           # Windows runner
+    └── run-under-xvfb.sh            # Linux runner (under Xvfb)
 ```
 
 ## Prerequisites
@@ -84,8 +127,8 @@ transport, overlay/undo/redo, KML export, HTTP test-control server).
 java -jar build/libs/simulacrum-all.jar
 ```
 
-Opens a 1280×800 window with the controls pane on the left and the
-WorldWind 3D globe on the right. Click **Send once** to publish a
+Opens maximized (1280×800 initial scene size) with the controls pane on
+the left and the WorldWind 3D globe on the right. Click **Send once** to publish a
 `TrackUpdate`, **Start stream** to publish at N Hz, or **Draw sample
 polygon** to drop a shape and exercise undo/redo and KML export.
 

@@ -68,6 +68,7 @@ public final class ControlsPane {
     private final Circle txDot = new Circle(6, Color.web("#3a3f4b"));
     private final Circle rxDot = new Circle(6, Color.web("#3a3f4b"));
     private final Label lastRxLabel = new Label("none");
+    private final Label robotBanner = new Label("idle");
 
     private final java.util.Map<String, Node> nodeRegistry = new java.util.HashMap<>();
 
@@ -140,8 +141,40 @@ public final class ControlsPane {
         Label title = new Label("Simulacrum — Bridge");
         title.getStyleClass().add("section-title");
 
-        root.getChildren().addAll(title, transportHealth(), statusSection(), bridgeSection(),
+        robotBanner.getStyleClass().add("robot-banner");
+        robotBanner.setMaxWidth(Double.MAX_VALUE);
+
+        root.getChildren().addAll(title, robotBanner, transportHealth(), statusSection(), bridgeSection(),
                 signalsSection(), publisherSection(), subscriberSection(), activitySection(), overlaySection());
+    }
+
+    /** Flash a banner at the top of the controls pane showing what the test driver just hit. */
+    public void flashAction(String label) {
+        Platform.runLater(() -> {
+            robotBanner.setText("ROBOT: " + label);
+            if (!robotBanner.getStyleClass().contains("robot-banner-active")) {
+                robotBanner.getStyleClass().add("robot-banner-active");
+            }
+            javafx.animation.PauseTransition pt =
+                    new javafx.animation.PauseTransition(javafx.util.Duration.millis(1100));
+            pt.setOnFinished(e -> robotBanner.getStyleClass().remove("robot-banner-active"));
+            pt.play();
+        });
+    }
+
+    /** Briefly highlight a registered button so a viewer can see which control was driven. */
+    public void flashButton(String id) {
+        Node node = nodeRegistry.get(id);
+        if (node == null) return;
+        Platform.runLater(() -> {
+            if (!node.getStyleClass().contains("robot-flash")) {
+                node.getStyleClass().add("robot-flash");
+            }
+            javafx.animation.PauseTransition pt =
+                    new javafx.animation.PauseTransition(javafx.util.Duration.millis(900));
+            pt.setOnFinished(e -> node.getStyleClass().remove("robot-flash"));
+            pt.play();
+        });
     }
 
     private HBox transportHealth() {

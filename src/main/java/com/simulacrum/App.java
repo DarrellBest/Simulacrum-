@@ -67,6 +67,12 @@ public final class App extends Application {
 
         mainView = new MainView(config, transport, overlayManager, undoStack, ship, noGlobe);
         controlServer = new TestControlServer(new TestControlServer.Handlers() {
+            @Override public void onRequest(String path, String query) {
+                String label = query != null && !query.isEmpty() ? path + "?" + query : path;
+                mainView.controlsPane().flashAction(label);
+                String btn = buttonForRoute(path, query);
+                if (btn != null) mainView.controlsPane().flashButton(btn);
+            }
             @Override public void startPublisher(double hz) { mainView.controlsPane().startPublisher(hz); }
             @Override public void stopPublisher() { mainView.controlsPane().stopPublisher(); }
             @Override public long publisherCount() { return mainView.controlsPane().publisherCount(); }
@@ -110,6 +116,7 @@ public final class App extends Application {
         Scene scene = new Scene(mainView.root(), 1280, 800);
         stage.setTitle("Simulacrum — SWFTS Simulator");
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.setOnCloseRequest(e -> shutdown());
         stage.show();
         shipSim.start();
@@ -126,5 +133,28 @@ public final class App extends Application {
         if (controlServer != null) controlServer.close();
         if (transport != null) transport.close();
         if (broker != null) broker.close();
+    }
+
+    private static String buttonForRoute(String path, String query) {
+        if (path == null) return null;
+        return switch (path) {
+            case "/signal/heartbeat" -> "btn.heartbeat";
+            case "/signal/sensor" -> {
+                String kind = paramOf(query, "kind");
+                yield kind != null ? "btn." + kind.toLowerCase(java.util.Locale.ROOT) : null;
+            }
+            case "/pub/start" -> "btn.startStream";
+            case "/pub/stop" -> "btn.stopStream";
+            default -> null;
+        };
+    }
+
+    private static String paramOf(String query, String key) {
+        if (query == null) return null;
+        for (String pair : query.split("&")) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2 && kv[0].equals(key)) return kv[1];
+        }
+        return null;
     }
 }

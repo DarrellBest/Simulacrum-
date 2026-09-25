@@ -73,3 +73,31 @@
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
     -fx-font-size: 12px;
 }
+
+.robot-banner {
+    -fx-background-color: #161b22;
+    -fx-text-fill: #6e7681;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 12;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-alignment: center-left;
+}
+
+.robot-banner-active {
+    -fx-background-color: #1f6feb;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #58a6ff;
+    -fx-effect: dropshadow(gaussian, #58a6ff, 8, 0.5, 0, 0);
+}
+
+.robot-flash {
+    -fx-background-color: #f0883e;
+    -fx-text-fill: #0d1117;
+    -fx-border-color: #ffa657;
+    -fx-effect: dropshadow(gaussian, #f0883e, 10, 0.6, 0, 0);
+}
