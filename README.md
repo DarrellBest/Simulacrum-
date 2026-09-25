@@ -113,18 +113,47 @@ Full JavaFX UI, AMQP publisher/subscriber, and test-control HTTP
 endpoint come up; the right-hand `SwingNode` is replaced with a
 placeholder. Use this in Xvfb or other headless displays.
 
-### 6. Robot Framework smoke suite (under Xvfb)
+### 6. Robot Framework smoke suite
+
+The suite exercises every route exposed by the test-control server
+(health, publisher, subscriber, draw/KML, ship controls, signal
+buttons, and UI introspection — 16 tests total).
+
+**One-time setup** — create a project-local venv so the toolchain
+stays out of your system Python:
+
+```powershell
+.\robot\setup-venv.ps1            # Windows
+```
 
 ```bash
-pip install -r robot/requirements.txt    # robotframework + robotframework-requests
+bash robot/setup-venv.sh          # Linux/macOS
+```
+
+Both scripts are idempotent — re-run after a `requirements.txt` bump.
+
+**Linux (under Xvfb):**
+
+```bash
 bash robot/run-under-xvfb.sh
 ```
 
-The runner boots the jar with `--no-globe` under `xvfb-run`, waits for
-`http://127.0.0.1:17355/health` to respond, and runs `robot/smoke.robot`
-(4 tests: health, publisher, subscriber, draw+KML). Robot output (HTML
-log and report) lands in a temp directory that the script prints at
-the end.
+**Windows (PowerShell, native, no Xvfb needed):**
+
+```powershell
+.\robot\run-on-windows.ps1                  # default 8s hold so you can see the UI
+.\robot\run-on-windows.ps1 -HoldSeconds 0   # CI mode, no hold
+```
+
+Either runner boots the jar with `--no-globe`, waits for
+`http://127.0.0.1:17355/health` to respond, then runs `robot/smoke.robot`.
+Robot output (HTML log and report) lands in a temp directory that the
+script prints at the end.
+
+**Adding a new test:** see [robot/ADD-TEST-PROMPT.md](robot/ADD-TEST-PROMPT.md)
+for a copy-paste prompt template that briefs Claude (or any other coding
+assistant) with everything it needs to add a new smoke test correctly in
+one shot.
 
 ### 7. Individual Gradle tasks
 
