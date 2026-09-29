@@ -17,9 +17,6 @@ java {
     }
 }
 
-// Repositories are declared centrally in settings.gradle.kts so the whole build
-// resolves from the in-tree offline-repo/ directory with no network access.
-
 javafx {
     version = "21.0.5"
     modules = listOf(
@@ -35,13 +32,11 @@ val artemisVersion = "2.37.0"
 val qpidJmsVersion = "2.6.1"
 val junitVersion = "5.11.3"
 val slf4jVersion = "2.0.16"
-// WorldWind 2.0.0 was built against JOGL 2.2.x (javax.media.opengl namespace).
-// JOGL 2.3.x moved that package, which breaks WorldWindowGLJPanel at link time.
-val joglVersion = "2.2.4"
+// WorldWind 2.2.1 is vendored in offline-repo (not on Maven Central). JOGL 2.2.4 only works on Windows.
+val worldwindVersion = "2.2.1"
+val joglVersion = "2.6.0"
 
-// Extra classpath for the debloat task only. ArtusCmd's distribution lib/
-// is missing log4j-core/api, which its startup calls directly. We resolve
-// these from Maven Central without polluting the shadow jar.
+// ArtusCmd's lib/ lacks log4j; the debloat task adds it.
 configurations {
     create("artusRuntime") {
         isCanBeResolved = true
@@ -64,16 +59,14 @@ dependencies {
     implementation("org.apache.qpid:qpid-jms-client:$qpidJmsVersion")
     implementation("jakarta.jms:jakarta.jms-api:3.1.0")
 
-    // NASA WorldWind Java (Maven Central release) + JOGL natives for OpenGL
-    implementation("gov.nasa:worldwind:2.0.0")
+    // WorldWind + JOGL
+    implementation("gov.nasa:worldwind:$worldwindVersion")
     implementation("org.jogamp.jogl:jogl-all:$joglVersion")
-    implementation("org.jogamp.gluegen:gluegen-rt:$joglVersion")
-    runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-linux-amd64")
-    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-linux-amd64")
-    runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-windows-amd64")
-    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-windows-amd64")
-    runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-macosx-universal")
-    runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-macosx-universal")
+    implementation("org.jogamp.gluegen:gluegen-rt:$joglVersion") { exclude(group = "antlr") }
+    for (platform in listOf("linux-amd64", "linux-aarch64", "windows-amd64", "macosx-universal")) {
+        runtimeOnly("org.jogamp.jogl:jogl-all:$joglVersion:natives-$platform")
+        runtimeOnly("org.jogamp.gluegen:gluegen-rt:$joglVersion:natives-$platform") { exclude(group = "antlr") }
+    }
 
     // Logging
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
@@ -127,16 +120,14 @@ tasks.register<Test>("integrationTest") {
     }
 }
 
-// ArtusCmd is a licensed tool and is NOT checked in. Point at its lib/ directory with
-//   -PartusLib=/path/to/ArtusCmd/lib   or   ARTUS_LIB=/path/to/ArtusCmd/lib
-// Only the debloat* tasks need it; every other task works without ArtusCmd.
+// ArtusCmd is not checked in: -PartusLib=/path/to/ArtusCmd/lib or ARTUS_LIB=...
 val artusLibDir: String = (project.findProperty("artusLib") as String?)
         ?: System.getenv("ARTUS_LIB")
         ?: "$projectDir/artuscmd/ArtusCmd/lib"
 val debloatedJar = layout.buildDirectory.file("libs/simulacrum-all-debloated.jar")
 
 tasks.register<JavaExec>("debloat") {
-    description = "Runs ArtusCmd 13.2.0 to debloat the shadow jar (aggressiveness=keeppublic)."
+    description = "Debloat the shadow jar with ArtusCmd using the verified flag set (see debloat/sweep.sh)."
     group = "build"
     dependsOn("shadowJar")
     val inputJar = layout.buildDirectory.file("libs/simulacrum-all.jar").get().asFile
@@ -145,37 +136,13 @@ tasks.register<JavaExec>("debloat") {
     outputs.file(outputJar)
     classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") } + configurations["artusRuntime"]
     mainClass.set("com.pjrcorp.artus.cmd.ArtusCmdMain")
-    // Work from build/libs so we can hand ArtusCmd bare filenames — it URI-ifies
-    // anything that looks absolute, and the Windows drive-letter colon blows up
-    // Java's URI parser ("Illegal character [:] in path at index 4: ///C:/...").
+    // Bare file names: ArtusCmd rejects Windows drive-letter paths.
     workingDir = inputJar.parentFile
     args = listOf(
-            "process",
-            "-a", "keeppublic",
-            "-jv", "21",
-            "-fo",
+            "process", "-jv", "21", "-fo",
+            "-rdb", "-rdc", "-rmr", "-re", "-rej", "-ruc",
             "-o", outputJar.name,
             inputJar.name
-    )
-}
-
-tasks.register<JavaExec>("debloatMax") {
-    description = "Runs ArtusCmd with aggressiveness=max (more cutting, more risk)."
-    group = "build"
-    dependsOn("shadowJar")
-    val inputJar = layout.buildDirectory.file("libs/simulacrum-all.jar").get().asFile
-    val outputJar = layout.buildDirectory.file("libs/simulacrum-all-debloated-max.jar").get().asFile
-    inputs.file(inputJar)
-    outputs.file(outputJar)
-    classpath = files("$artusLibDir").asFileTree.matching { include("*.jar") } + configurations["artusRuntime"]
-    mainClass.set("com.pjrcorp.artus.cmd.ArtusCmdMain")
-    args = listOf(
-            "process",
-            "-a", "max",
-            "-jv", "21",
-            "-fo",
-            "-o", outputJar.relativeTo(projectDir).path.replace('\\', '/'),
-            inputJar.relativeTo(projectDir).path.replace('\\', '/')
     )
 }
 
@@ -235,9 +202,7 @@ tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.Shadow
     exclude("**/javafx-swt.jar")
 }
 
-// Reproducible source distribution. Produces build/distributions/simulacrum-src-<version>.zip
-// containing everything a fresh user needs to unpack and run bootstrap.{ps1,sh}.
-// Excludes build artifacts, IDE state, venvs, git metadata, and any recorded demos.
+// build/distributions/simulacrum-src-<version>.zip: the source tree, ready for bootstrap.{sh,ps1}.
 tasks.register<Zip>("packageSource") {
     description = "Zip the source tree into a self-contained distribution archive."
     group = "distribution"
@@ -268,12 +233,13 @@ tasks.register<Zip>("packageSource") {
         }
     }
 
-    // Preserve the executable bit on shell scripts and the Gradle wrapper.
     filesMatching(listOf(
         "$rootName/gradlew",
         "$rootName/bootstrap.sh",
         "$rootName/robot/setup-venv.sh",
-        "$rootName/robot/run-under-xvfb.sh"
+        "$rootName/robot/run-under-xvfb.sh",
+        "$rootName/debloat/test-jar.sh",
+        "$rootName/debloat/sweep.sh"
     )) {
         mode = "755".toInt(8)
     }
