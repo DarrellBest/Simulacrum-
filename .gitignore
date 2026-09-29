@@ -24,3 +24,6 @@ robot/.venv/
 
 # Gradle distro downloaded on first wrapper run (too large for git)
 gradle/wrapper/*.zip
+
+# Local artusmcd working directory
+artusmcd/
