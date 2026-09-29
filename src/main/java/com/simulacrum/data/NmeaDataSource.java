@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.Reader;
 import java.util.function.Consumer;
 
-/** Worked example of a {@link DataSource}: reads NMEA 0183 sentences from any {@link Reader}. */
+/** {@link DataSource} that reads NMEA 0183 sentences from a {@link Reader}. */
 public final class NmeaDataSource implements DataSource {
     private final String name;
     private final Reader reader;

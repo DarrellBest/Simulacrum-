@@ -1,22 +1,7 @@
 #requires -Version 5.1
 <#
-Simulacrum bootstrap (Windows / PowerShell).
-
-Unpack the source zip, then run this script. It will:
-  1. Verify JDK 21 is on PATH
-  2. Build the shadow jar with the bundled Gradle wrapper
-  3. Create the Robot Framework venv at robot\.venv
-  4. Run the Robot Framework smoke suite (17 tests)
-  5. Launch the JavaFX desktop app
-
-Re-runnable. The Gradle build is incremental, the venv setup is idempotent,
-and re-running just refreshes whatever changed.
-
-Usage:
-    .\bootstrap.ps1                 # full path: build + venv + tests + launch
-    .\bootstrap.ps1 -NoTests        # skip the Robot suite
-    .\bootstrap.ps1 -NoLaunch       # skip the GUI launch (CI mode)
-    .\bootstrap.ps1 -NoTests -NoLaunch   # build the jar only
+Build the shadow jar, set up robot\.venv, run the Robot suite, launch the app.
+Usage: .\bootstrap.ps1 [-NoTests] [-NoLaunch]
 #>
 [CmdletBinding()]
 param(
@@ -36,7 +21,7 @@ try {
     }
     Write-Host "    $verLine"
     if ($verLine -notmatch '"21\.' -and $verLine -notmatch 'version 21') {
-        Write-Warning "Detected Java version does not look like 21. The Gradle toolchain will download JDK 21 if needed."
+        Write-Warning "Java is not 21."
     }
 
     Write-Host "==> Building shadow jar (.\gradlew.bat shadowJar)"

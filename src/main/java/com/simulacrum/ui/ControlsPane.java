@@ -138,7 +138,7 @@ public final class ControlsPane {
         transportLabel.setText("Transport: " + transport.describe());
         transportLabel.getStyleClass().add("stat");
 
-        Label title = new Label("Simulacrum — Bridge");
+        Label title = new Label("Bridge");
         title.getStyleClass().add("section-title");
 
         robotBanner.getStyleClass().add("robot-banner");
@@ -148,7 +148,7 @@ public final class ControlsPane {
                 signalsSection(), publisherSection(), subscriberSection(), activitySection(), overlaySection());
     }
 
-    /** Flash a banner at the top of the controls pane showing what the test driver just hit. */
+    /** Show the route the test driver just hit. */
     public void flashAction(String label) {
         Platform.runLater(() -> {
             robotBanner.setText("ROBOT: " + label);
@@ -162,7 +162,7 @@ public final class ControlsPane {
         });
     }
 
-    /** Briefly highlight a registered button so a viewer can see which control was driven. */
+    /** Briefly highlight a registered button. */
     public void flashButton(String id) {
         Node node = nodeRegistry.get(id);
         if (node == null) return;

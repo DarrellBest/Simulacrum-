@@ -45,7 +45,7 @@ public final class ShipSimulator implements AutoCloseable {
         });
     }
 
-    /** Pure step. No FX/threading. Returns new state. Tested in ShipSimulatorTest. */
+    /** One integration step. Pure function of the inputs. */
     public static State advance(State s, double dt) {
         double targetKn = s.anchored ? 0 : (s.throttle / 100.0) * ShipModel.MAX_SPEED_KN;
         double newKn = approach(s.speedKn, targetKn, ACCEL_KN_PER_S * dt);

@@ -1,7 +1,5 @@
 *** Settings ***
-Documentation    Simulacrum smoke test — drives every endpoint exposed by the in-app
-...              test control server on :17355. Run via robot/run-under-xvfb.sh
-...              on Linux or robot/run-on-windows.ps1 on Windows.
+Documentation    Drives every route of the test-control server on :17355.
 Library          RequestsLibrary
 Library          Collections
 Library          String
@@ -9,8 +7,7 @@ Test Teardown    Sleep    ${PACE}
 
 *** Variables ***
 ${BASE}    http://127.0.0.1:17355
-# Override on the CLI to slow the suite down for visual demos:
-#   robot --variable PACE:1.5s smoke.robot
+# robot --variable PACE:1.5s smoke.robot  slows the suite down
 ${PACE}    0s
 
 *** Test Cases ***
@@ -79,9 +76,7 @@ Ship state returns the expected schema
     ...    ^lat=-?\\d+\\.\\d+ lon=-?\\d+\\.\\d+ hdg=-?\\d+\\.\\d+ spd=-?\\d+\\.\\d+ thr=-?\\d+\\.\\d+ rud=-?\\d+\\.\\d+$
 
 Ship moves under sustained autopilot
-    [Documentation]    Hold throttle and autopilot long enough for the integrator
-    ...                to actually traverse, then assert lat/lon changed. Doubles
-    ...                as the visible "globe is alive" moment in demo recordings.
+    [Documentation]    Hold throttle and autopilot, then assert the position changed.
     ${before}=    GET    ${BASE}/ship/state
     GET    url=${BASE}/ship/heading?v=180
     GET    url=${BASE}/ship/throttle?v=80

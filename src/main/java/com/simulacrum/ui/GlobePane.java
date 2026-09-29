@@ -72,7 +72,7 @@ public final class GlobePane {
             swingNode.setContent(wwd);
         });
 
-        // Force redraws to defeat the SwingNode initial-paint bug + give us smooth ship animation.
+        // Continuous redraw: works around the SwingNode initial-paint bug and animates the ship.
         AnimationTimer ticker = new AnimationTimer() {
             @Override public void handle(long now) {
                 if (wwd == null) return;
@@ -93,7 +93,6 @@ public final class GlobePane {
         };
         ticker.start();
 
-        // Repaint on resize as well — covers stage maximize / split-pane drag.
         swingNode.boundsInLocalProperty().addListener((obs, a, b) -> {
             if (wwd != null) SwingUtilities.invokeLater(wwd::redraw);
         });

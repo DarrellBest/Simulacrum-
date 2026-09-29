@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-/** In-process loopback transport. Lets the UI demo AMQP flow with no broker. */
+/** In-process transport used when the broker is unavailable. */
 public final class LoopbackTransport implements MessageTransport {
     private final Map<String, List<Consumer<byte[]>>> subscribers = new ConcurrentHashMap<>();
 

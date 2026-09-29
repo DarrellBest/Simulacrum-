@@ -2,10 +2,7 @@ package com.simulacrum.data;
 
 import java.util.function.Consumer;
 
-/**
- * Pluggable sensor feed. Production additions (AIS, OTH-GOLD, NCOM, NITF, ...) will implement
- * this interface. Only {@link NmeaDataSource} ships as a worked example.
- */
+/** A sensor feed. {@link NmeaDataSource} is the only implementation. */
 public interface DataSource extends AutoCloseable {
     /** Human-readable feed name, used in the UI. */
     String name();

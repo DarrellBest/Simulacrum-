@@ -1,10 +1,6 @@
 package com.simulacrum;
 
-/**
- * Separate entry point so the JAR main class does NOT extend {@link javafx.application.Application}.
- * Without this, JavaFX 21's module check aborts launches from a non-modular shadow JAR with
- * "JavaFX runtime components are missing".
- */
+/** Entry point that does not extend Application, so the non-modular shadow jar launches on JavaFX 21. */
 public final class Launcher {
     private Launcher() {
     }

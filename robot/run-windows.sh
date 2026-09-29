@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
-# Windows-friendly Robot Framework runner (no xvfb — uses the real desktop display).
-# Boots a Simulacrum jar with --no-globe, waits for the test-control endpoint on
-# :17355, runs robot/smoke.robot, then tears the app down. Exits non-zero on failure.
-#
-# Usage: bash robot/run-windows.sh <path-to-jar> <output-dir>
+# Run the Robot suite against a jar on the desktop display (no Xvfb).
+# Usage: bash robot/run-windows.sh <jar> <outdir> [app-flags]   ("" = globe on; default --no-globe)
 set -uo pipefail
 
 JAR="${1:?usage: run-windows.sh <jar> <outdir> [app-flags]}"
 OUT="${2:?usage: run-windows.sh <jar> <outdir> [app-flags]}"
-# Optional 3rd arg: app launch flags. Defaults to --no-globe (headless-safe).
-# Pass "" (empty) to launch the FULL UI with the WorldWind 3D globe.
 APP_FLAGS="${3---no-globe}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BASE="http://127.0.0.1:17355"
@@ -39,7 +34,6 @@ for i in $(seq 1 60); do
         ready=1
         break
     fi
-    # bail early if the app already died
     if ! kill -0 "$APP_PID" 2>/dev/null; then
         echo "App process exited before becoming ready. Log:" >&2
         cat "$APP_LOG" >&2

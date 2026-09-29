@@ -1,13 +1,6 @@
 #requires -Version 5.1
 <#
-One-shot setup for the project-local Python virtual environment used by the
-Robot Framework smoke suite. Creates robot\.venv if missing, then installs
-robot\requirements.txt into it. Idempotent. Re-run safely after pulling
-requirement changes.
-
-Usage:
-    .\robot\setup-venv.ps1
-    .\robot\setup-venv.ps1 -Python C:\path\to\python.exe   # pick a specific interpreter
+Create robot\.venv and install robot\requirements.txt. -Python picks the interpreter.
 #>
 [CmdletBinding()]
 param(
@@ -44,5 +37,5 @@ Write-Host "Installing requirements from $Requirements ..."
 Write-Host ""
 Write-Host "Done. Robot Framework is installed in $Venv"
 & (Join-Path $Venv 'Scripts\robot.exe') --version
-# robot --version exits 251 by design; suppress that so the script exits 0.
+# robot --version exits 251
 if ($LASTEXITCODE -eq 251) { $global:LASTEXITCODE = 0 }

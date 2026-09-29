@@ -11,7 +11,7 @@
             stylesheets="@../styles/app.css"
             styleClass="app-root">
     <top>
-        <Label fx:id="banner" styleClass="banner" text="Simulacrum — SWFTS Simulator" maxWidth="Infinity">
+        <Label fx:id="banner" styleClass="banner" text="Simulacrum" maxWidth="Infinity">
             <padding>
                 <Insets top="6" right="10" bottom="6" left="10"/>
             </padding>

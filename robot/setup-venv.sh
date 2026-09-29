@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# One-shot setup for the project-local Python virtual environment used by the
-# Robot Framework smoke suite. Creates robot/.venv if missing, then installs
-# robot/requirements.txt into it. Idempotent. Re-run safely after pulling
-# requirement changes.
-#
-# Usage:
-#     bash robot/setup-venv.sh
-#     PYTHON=/usr/bin/python3.11 bash robot/setup-venv.sh
+# Create robot/.venv and install robot/requirements.txt. PYTHON=... picks the interpreter.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -35,7 +28,7 @@ echo "Installing requirements from $REQUIREMENTS ..."
 
 echo
 echo "Done. Robot Framework is installed in $VENV"
-# 'robot --version' exits 251 by design; tolerate that here.
+# robot --version exits 251
 "$VENV/bin/robot" --version || rc=$?
 if [[ "${rc:-0}" -ne 0 && "${rc:-0}" -ne 251 ]]; then
     exit "${rc}"

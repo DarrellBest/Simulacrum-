@@ -9,11 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/**
- * Holds the current set of {@link Shape}s and notifies listeners on add/remove/move.
- * Mutations should go through {@link UndoStack} to preserve undo/redo semantics, except
- * for the listener registration methods which don't affect model state.
- */
+/** Current set of {@link Shape}s. Mutate through {@link UndoStack}. */
 public final class OverlayManager {
     private final Map<String, Shape> shapes = new LinkedHashMap<>();
     private final List<Consumer<Event>> listeners = new ArrayList<>();

@@ -1,20 +1,6 @@
 #!/usr/bin/env bash
-# Simulacrum bootstrap (Linux / macOS / WSL).
-#
-# Unpack the source tarball, then run this script. It will:
-#   1. Verify JDK 21 is on PATH
-#   2. Build the shadow jar with the bundled Gradle wrapper
-#   3. Create the Robot Framework venv at robot/.venv
-#   4. Run the Robot Framework smoke suite (17 tests, under xvfb on Linux)
-#   5. Launch the JavaFX desktop app
-#
-# Re-runnable. Gradle build is incremental, venv setup is idempotent.
-#
-# Usage:
-#     bash bootstrap.sh                 # full path: build + venv + tests + launch
-#     bash bootstrap.sh --no-tests      # skip the Robot suite
-#     bash bootstrap.sh --no-launch     # skip the GUI launch (CI mode)
-#     bash bootstrap.sh --no-tests --no-launch   # build the jar only
+# Build the shadow jar, set up robot/.venv, run the Robot suite, launch the app.
+# Usage: bash bootstrap.sh [--no-tests] [--no-launch]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -27,7 +13,7 @@ for arg in "$@"; do
         --no-tests)  NO_TESTS=1 ;;
         --no-launch) NO_LAUNCH=1 ;;
         -h|--help)
-            sed -n '2,16p' "$0"; exit 0 ;;
+            sed -n '2,3p' "$0"; exit 0 ;;
         *) echo "Unknown flag: $arg" >&2; exit 2 ;;
     esac
 done
@@ -40,7 +26,7 @@ fi
 VER_LINE="$(java -version 2>&1 | head -n1)"
 echo "    $VER_LINE"
 if ! echo "$VER_LINE" | grep -Eq '"21\.|version 21'; then
-    echo "Warning: detected Java version does not look like 21. Gradle toolchain may auto-download JDK 21." >&2
+    echo "Warning: Java is not 21." >&2
 fi
 
 echo "==> Building shadow jar (./gradlew shadowJar)"

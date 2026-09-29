@@ -9,11 +9,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * Minimal OGC KML 2.2 writer that covers the shape kinds Simulacrum produces. WorldWind bundles
- * a richer {@code KMLDocumentBuilder}, but using our own keeps the unit tests free of WorldWind's
- * Swing/JOGL initialization and makes KML a stable wire format regardless of WorldWind version.
- */
+/** KML 2.2 writer for the shapes in {@link OverlayManager}. Independent of WorldWind. */
 public final class KmlExporter {
     private KmlExporter() {
     }

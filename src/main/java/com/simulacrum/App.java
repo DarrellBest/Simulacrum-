@@ -114,7 +114,7 @@ public final class App extends Application {
         log.info("test-control HTTP listening on :{}", TestControlServer.DEFAULT_PORT);
 
         Scene scene = new Scene(mainView.root(), 1280, 800);
-        stage.setTitle("Simulacrum — SWFTS Simulator");
+        stage.setTitle("Simulacrum");
         stage.setScene(scene);
         stage.setMaximized(true);
         stage.setOnCloseRequest(e -> shutdown());

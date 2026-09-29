@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Boots the Simulacrum jar under Xvfb, waits for the test control endpoint,
-# then runs the Robot Framework smoke suite. Exits non-zero if any step fails.
+# Run the Robot suite against build/libs/simulacrum-all.jar under Xvfb.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -8,7 +7,7 @@ ROOT="$(cd "$HERE/.." && pwd)"
 JAR="$ROOT/build/libs/simulacrum-all.jar"
 
 if [[ ! -f "$JAR" ]]; then
-    echo "Jar not found at $JAR — run './gradlew shadowJar' first." >&2
+    echo "Jar not found at $JAR. Run './gradlew shadowJar' first." >&2
     exit 1
 fi
 
@@ -18,7 +17,7 @@ if ! command -v xvfb-run >/dev/null; then
 fi
 
 if ! command -v robot >/dev/null; then
-    echo "'robot' not found on PATH — install with: pip install -r $HERE/requirements.txt" >&2
+    echo "'robot' not found on PATH. Install with: pip install -r $HERE/requirements.txt" >&2
     exit 1
 fi
 
@@ -26,8 +25,6 @@ LOG_DIR="$(mktemp -d)"
 APP_LOG="$LOG_DIR/app.log"
 
 echo "Launching Simulacrum under Xvfb, log: $APP_LOG"
-# --no-globe skips the Swing/WorldWind SwingNode so the app boots cleanly under Xvfb's
-# software GL. The full 3D globe still works in normal desktop launches.
 xvfb-run -a --server-args="-screen 0 1280x800x24" \
     java -Dprism.order=sw -Dsun.java2d.xrender=false \
     -jar "$JAR" --no-globe >"$APP_LOG" 2>&1 &

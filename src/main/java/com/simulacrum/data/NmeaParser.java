@@ -1,6 +1,6 @@
 package com.simulacrum.data;
 
-/** Minimal NMEA 0183 parser for GGA and RMC sentences. Pure, no I/O — easy to unit-test. */
+/** NMEA 0183 parser for GGA and RMC sentences. */
 public final class NmeaParser {
     private NmeaParser() {
     }

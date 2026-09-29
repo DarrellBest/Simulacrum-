@@ -1,10 +1,6 @@
 package com.simulacrum.services;
 
-/**
- * Host/port hooks for the external services a real SWFTS deployment would connect to.
- * MVP does not ship any of these servers — the UI just exposes the settings so the
- * integration point is visible.
- */
+/** Endpoints for external services (LDAP, DNS, NTP, TACLAN). Configuration only; nothing connects yet. */
 public final class ServiceConfig {
     public record Endpoint(String host, int port, boolean tls) {
     }

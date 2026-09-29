@@ -23,8 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Black-box test: spawns build/libs/simulacrum-all.jar with --no-globe, drives the live UI via
- * TestControlServer endpoints, asserts behavior. No JavaFX/WorldWind in the test JVM.
+ * Spawns the shadow jar with --no-globe and drives it through the HTTP control endpoint.
  *
  * <p>Run with: <code>./gradlew integrationTest</code> (depends on shadowJar).
  * <p>Skipped if the jar isn't present.
@@ -44,7 +43,7 @@ class JarIntegrationTest {
         String jarProp = System.getProperty("simulacrum.jar", "build/libs/simulacrum-all.jar");
         Path jar = Paths.get(jarProp);
         assumeTrue(Files.exists(jar),
-                "jar missing at " + jar + " — run shadowJar (or debloat) first");
+                "jar missing at " + jar + ". Run shadowJar or debloat first");
 
         String logName = "build/integration-test-" + jar.getFileName() + ".log";
         ProcessBuilder pb = new ProcessBuilder("java", "-jar", jar.toString(), "--no-globe")

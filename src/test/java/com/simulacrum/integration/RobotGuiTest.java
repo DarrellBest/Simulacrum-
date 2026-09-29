@@ -28,11 +28,11 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Drives the live JavaFX window with java.awt.Robot — sends real OS mouse events at named buttons
- * located via the running app's HTTP control endpoint. Verifies side-effects via the same endpoint.
+ * Clicks buttons in the live JavaFX window with java.awt.Robot, locating them through the
+ * HTTP control endpoint.
  *
  * <p>Run with: <code>./gradlew guiTest</code> (built jar) or <code>./gradlew guiTestDebloated</code>.
- * <p>The app must run with a real display — this test SKIPS in headless environments.
+ * <p>The app must run with a real display; skipped when headless.
  */
 @Tag("gui")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -66,7 +66,7 @@ class RobotGuiTest {
         }
         if (!"ok".equals(get("/health"))) throw new IllegalStateException("/health timeout");
 
-        // Give JavaFX a beat to lay out the scene before we start querying screen coords.
+        // let the scene lay out before querying screen coordinates
         Thread.sleep(2000);
         robot = new Robot();
         robot.setAutoDelay(40);

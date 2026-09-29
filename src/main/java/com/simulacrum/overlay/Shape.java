@@ -5,11 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Plain, WorldWind-free representation of a drawn overlay. Keeps the overlay model independent
- * of WorldWind so it's unit-testable without a display. A separate adapter converts {@link Shape}
- * objects into WorldWind {@code Renderable}s at render time.
- */
+/** A drawn overlay, independent of WorldWind. GlobePane converts these to Renderables. */
 public final class Shape {
     public enum Kind { POINT, LINE, ELLIPSE, RECTANGLE, POLYGON }
 

@@ -10,11 +10,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Tiny localhost HTTP control endpoint enabled in test mode. Lets Robot Framework drive
- * publisher/subscriber/drawing actions without fighting JavaFX automation. Listens on
- * {@value #DEFAULT_PORT}.
- */
+/** Localhost HTTP endpoint on {@value #DEFAULT_PORT} that the Robot suite drives. */
 public final class TestControlServer implements AutoCloseable {
     public static final int DEFAULT_PORT = 17355;
 
@@ -36,7 +32,7 @@ public final class TestControlServer implements AutoCloseable {
         default String uiLocate(String id) { return ""; }
         default String uiList() { return ""; }
         default void uiFocus() { }
-        /** Fired before each route runs. Lets the UI surface "Robot just hit X" feedback. */
+        /** Called before each route; the UI uses it to show which route was hit. */
         default void onRequest(String path, String query) { }
     }
 
@@ -117,7 +113,6 @@ public final class TestControlServer implements AutoCloseable {
             try {
                 handlers.onRequest(path, exchange.getRequestURI().getQuery());
             } catch (RuntimeException ignored) {
-                // UI feedback must never break a route
             }
             inner.handle(exchange);
         });

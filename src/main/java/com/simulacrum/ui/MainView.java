@@ -51,7 +51,7 @@ public final class MainView {
         }
 
         if (transport.getClass().getSimpleName().equals("LoopbackTransport")) {
-            Label banner = new Label("AMQP unavailable — using in-process loopback");
+            Label banner = new Label("AMQP unavailable, using in-process loopback");
             banner.getStyleClass().add("fallback-banner");
             banner.setMaxWidth(Double.MAX_VALUE);
             rootPane.setBottom(banner);

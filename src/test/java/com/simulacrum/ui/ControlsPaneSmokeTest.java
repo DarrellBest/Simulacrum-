@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Boots JavaFX, builds a real ControlsPane against a loopback transport, and exercises it. */
+/** Builds a ControlsPane on a loopback transport under a live JavaFX toolkit. */
 class ControlsPaneSmokeTest {
 
     @BeforeAll
@@ -35,7 +35,7 @@ class ControlsPaneSmokeTest {
         OverlayManager overlays = new OverlayManager();
         UndoStack undo = new UndoStack();
         ShipModel ship = new ShipModel();
-        GlobePane globe = new GlobePane(overlays); // no initialize() — wwd stays null, calls no-op safely
+        GlobePane globe = new GlobePane(overlays); // no initialize(): wwd stays null, calls no-op safely
 
         AtomicReference<ControlsPane> ref = new AtomicReference<>();
         runFx(() -> ref.set(new ControlsPane(config, tx, overlays, undo, globe, ship)));
@@ -43,17 +43,15 @@ class ControlsPaneSmokeTest {
         assertNotNull(pane);
         assertNotNull(pane.node());
 
-        // Sections should be present in the rendered tree.
         assertTrue(containsLabel(pane.node(), "Bridge Controls"), "missing Bridge section");
         assertTrue(containsLabel(pane.node(), "Signal Buttons (publish via AMQP)"), "missing Signals section");
         assertTrue(containsLabel(pane.node(), "Activity Log"), "missing Activity Log");
         assertTrue(containsLabel(pane.node(), "TrackUpdate Publisher"), "missing Publisher section");
 
-        // Heartbeat round-trips through the loopback subscriber.
         long beforePub = pane.publisherCount();
         long beforeSub = pane.subscriberCount();
         runFx(pane::emitHeartbeatNow);
-        // subscribe handler hops to FX thread, so pump it once more.
+        // subscribe handler hops to the FX thread
         runFx(() -> { });
         assertTrue(pane.publisherCount() > beforePub, "publisher count should increase");
         assertTrue(pane.subscriberCount() > beforeSub, "loopback subscriber should receive the heartbeat");
